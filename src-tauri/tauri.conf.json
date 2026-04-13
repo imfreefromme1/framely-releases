@@ -31,7 +31,7 @@
   },
   "productName": "Framely",
   "mainBinaryName": "Framely",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "identifier": "gg.framely.app",
   "plugins": {
     "updater": {

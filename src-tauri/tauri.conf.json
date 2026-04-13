@@ -1,0 +1,64 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "resources": [
+      "resources/powerplans/*",
+      "resources/PresentMon.exe"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller",
+        "silent": true
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "productName": "Framely",
+  "mainBinaryName": "Framely",
+  "version": "1.0.0",
+  "identifier": "gg.framely.app",
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMxMDI0NENBNDEyRjEzNEYKUldSUEV5OUJ5a1FDd1VHVUlRcWcyeHlmZDNra2FpVkJzYlVqc1l3VkJaNnZURGhLVGVvM3I5SWsK",
+      "endpoints": [
+        "https://github.com/imfreefromme1/framely-releases/releases/latest/download/latest.json"
+      ]
+    }
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Framely",
+        "width": 940,
+        "height": 620,
+        "minWidth": 800,
+        "minHeight": 540,
+        "decorations": false,
+        "transparent": false,
+        "useHttpsScheme": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+﻿src-tauri/target/
+node_modules/
+~/.tauri/
+*.key
+*.key.pub

@@ -1,0 +1,25 @@
+[package]
+name = "framely"
+version = "1.0.0"
+description = "Framely — PC Optimizer for Gamers"
+authors = ["Framely"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sysinfo = "0.29"
+sha2 = "0.10"
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,59 @@
+{
+  "identifier": "migrated",
+  "description": "permissions that were migrated from v1",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "args": true,
+          "cmd": "taskkill",
+          "name": "taskkill",
+          "sidecar": false
+        },
+        {
+          "args": true,
+          "cmd": "ipconfig",
+          "name": "ipconfig",
+          "sidecar": false
+        },
+        {
+          "args": true,
+          "cmd": "reg",
+          "name": "reg",
+          "sidecar": false
+        },
+        {
+          "args": true,
+          "cmd": "wmic",
+          "name": "wmic",
+          "sidecar": false
+        },
+        {
+          "args": true,
+          "cmd": "powershell",
+          "name": "powershell",
+          "sidecar": false
+        },
+        {
+          "args": true,
+          "cmd": "netsh",
+          "name": "netsh",
+          "sidecar": false
+        }
+      ]
+    },
+    "shell:allow-open",
+    "shell:default"
+  ]
+}

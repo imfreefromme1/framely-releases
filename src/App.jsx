@@ -3,6 +3,7 @@ import ActivationScreen from "./pages/ActivationScreen";
 import Dashboard from "./pages/Dashboard";
 import { getStoredLicense, validateStoredLicense } from "./lib/license";
 
+
 // ── Font import ───────────────────────────────────────────
 if (!document.getElementById("framely-fonts")) {
   const link = document.createElement("link");
@@ -141,10 +142,12 @@ export function FramelyLogo({ size = 32 }) {
   );
 }
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
 export function TitleBar() {
-  async function minimize() { if (window.__TAURI__) { const { appWindow } = await import("@tauri-apps/api/window"); appWindow.minimize(); } }
-  async function maximize() { if (window.__TAURI__) { const { appWindow } = await import("@tauri-apps/api/window"); appWindow.toggleMaximize(); } }
-  async function close()    { if (window.__TAURI__) { const { appWindow } = await import("@tauri-apps/api/window"); appWindow.close(); } }
+  async function minimize() { await getCurrentWindow().minimize(); }
+  async function maximize() { await getCurrentWindow().toggleMaximize(); }
+  async function close()    { await getCurrentWindow().close(); }
 
   return (
     <div data-tauri-drag-region style={{ position: "fixed", top: 0, left: 0, right: 0, height: 36, background: C.bg0, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", zIndex: 1000, userSelect: "none" }}>

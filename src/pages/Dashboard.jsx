@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { FramelyLogo, TitleBar, C } from "../App";
 import { clearLicense, getLicenseExpiry } from "../lib/license";
 import { invoke } from "@tauri-apps/api/core";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 // ─── License Gate ─────────────────────────────────────────────────────────────
 function LicenseGate({ children }) {
@@ -269,6 +271,25 @@ export default function Dashboard() {
   })();
   let section = null;
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const update = await check();
+        if (update?.available) {
+          const confirmed = window.confirm(
+            `Framely ${update.version} is available!\n\nInstall now?`
+          );
+          if (confirmed) {
+            await update.downloadAndInstall();
+            await relaunch();
+          }
+        }
+      } catch (e) {
+        console.error("Update check failed:", e);
+      }
+    })();
+  }, []);
+
   return (
     <div style={{ display: "flex", height: "100vh", background: C.bg0, color: C.text, fontFamily: C.fontUI }}>
       <TitleBar />
@@ -325,7 +346,7 @@ export default function Dashboard() {
           })}
         </nav>
 
-        <div style={{ padding: "14px 18px", borderTop: `1px solid ${C.border}` }}>
+<div style={{ padding: "14px 18px", borderTop: `1px solid ${C.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.gold, boxShadow: `0 0 6px ${C.gold}`, animation: "pulse 2s infinite" }} />
             <span style={{ fontSize: 10, color: C.gold, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700 }}>License Active</span>
@@ -348,6 +369,7 @@ export default function Dashboard() {
           >
             Deactivate
           </button>
+          <div style={{ fontSize: 9, color: C.textDim, textAlign: "center", marginTop: 10, letterSpacing: "0.1em", fontFamily: C.fontMono }}>v1.0.6</div>
         </div>
         <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
       </aside>

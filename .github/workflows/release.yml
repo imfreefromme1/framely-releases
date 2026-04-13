@@ -35,3 +35,7 @@ jobs:
           releaseBody: See assets below to download.
           releaseDraft: false
           prerelease: false
+      - name: Notify Discord
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"**Framely ${{ github.ref_name }} released!**\nhttps://github.com/imfreefromme1/framely-releases/releases/tag/${{ github.ref_name }}\"}" "${{ secrets.DISCORD_WEBHOOK }}"

@@ -40,6 +40,6 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
-          $url = "https://github.com/imfreefromme1/framely-releases/releases/tag/$tag"
+          $url = "https://github.com/key-commits/framely-releases/releases/tag/$tag"
           $body = @{ content = "**Framely $tag released!** $url" } | ConvertTo-Json
           Invoke-RestMethod -Uri "${{ secrets.DISCORD_WEBHOOK }}" -Method Post -ContentType "application/json" -Body $body

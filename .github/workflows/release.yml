@@ -37,5 +37,9 @@ jobs:
           prerelease: false
       - name: Notify Discord
         if: success()
+        shell: pwsh
         run: |
-          curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"**Framely ${{ github.ref_name }} released!** https://github.com/imfreefromme1/framely-releases/releases/tag/${{ github.ref_name }}\"}" "${{ secrets.DISCORD_WEBHOOK }}"
+          $tag = "${{ github.ref_name }}"
+          $url = "https://github.com/imfreefromme1/framely-releases/releases/tag/$tag"
+          $body = @{ content = "**Framely $tag released!** $url" } | ConvertTo-Json
+          Invoke-RestMethod -Uri "${{ secrets.DISCORD_WEBHOOK }}" -Method Post -ContentType "application/json" -Body $body

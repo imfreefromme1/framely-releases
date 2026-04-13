@@ -913,7 +913,7 @@ fn scan_installed_games() -> Vec<DetectedGame> {
 // ─── Payhip license validation ────────────────────────────────────────────────
 
 #[tauri::command]
-fn validate_license(key: String, _machine_id: String) -> Result<String, String> {
+fn validate_license(key: String, machine_id: String) -> Result<String, String> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -923,8 +923,9 @@ fn validate_license(key: String, _machine_id: String) -> Result<String, String> 
         let client = reqwest::Client::new();
         let key = key.trim().to_string();
 
-        let mut last_status = 0u16;
-        let mut last_body   = String::new();
+        // ── Step 1: Check Payhip ──────────────────────────────────────────
+        let mut found_tier: Option<&Tier> = None;
+        let mut payhip_data: serde_json::Value = serde_json::Value::Null;
 
         for tier in TIERS {
             let resp = client
@@ -933,69 +934,107 @@ fn validate_license(key: String, _machine_id: String) -> Result<String, String> 
                 .query(&[("license_key", key.as_str())])
                 .send()
                 .await
-                .map_err(|e: reqwest::Error| e.to_string())?;
+                .map_err(|e| e.to_string())?;
 
             let status = resp.status().as_u16();
             let body_text = resp.text().await.unwrap_or_default();
-
-            println!("[Payhip] tier={} status={} body={}", tier.name, status, &body_text[..body_text.len().min(300)]);
-
-            last_status = status;
-            last_body   = body_text.clone();
-
             let body: serde_json::Value = serde_json::from_str(&body_text).unwrap_or_default();
 
             if status == 200 && body["data"].is_object() {
-                let data = &body["data"];
-
-                let enabled = data["enabled"].as_bool().unwrap_or(false);
+                let enabled = body["data"]["enabled"].as_bool().unwrap_or(false);
                 if !enabled {
                     return Ok(serde_json::json!({
                         "valid": false,
                         "reason": "This license has been disabled or refunded."
                     }).to_string());
                 }
+                found_tier = Some(tier);
+                payhip_data = body["data"].clone();
+                break;
+            }
+        }
 
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs() as i64;
+        let tier = match found_tier {
+            Some(t) => t,
+            None => return Ok(serde_json::json!({
+                "valid": false,
+                "reason": "Invalid license key."
+            }).to_string()),
+        };
 
-                let expires_at: Option<i64> = if let Some(days) = tier.days {
-                    let purchase_date = data["date"].as_str().unwrap_or("");
-                    parse_payhip_date(purchase_date).map(|ts| ts + (days as i64 * 86400))
-                } else {
-                    None
-                };
+        // ── Step 2: Check expiry ──────────────────────────────────────────
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
 
-                let within_window = match expires_at {
-                    Some(exp) => exp > now,
-                    None => true,
-                };
+        let expires_at: Option<i64> = if let Some(days) = tier.days {
+            let purchase_date = payhip_data["date"].as_str().unwrap_or("");
+            parse_payhip_date(purchase_date).map(|ts| ts + (days as i64 * 86400))
+        } else {
+            None
+        };
 
-                if !within_window {
-                    return Ok(serde_json::json!({
-                        "valid": false,
-                        "reason": format!(
-                            "Your {} access has expired. Please purchase a new key.",
-                            tier.name
-                        ),
-                        "expires_at": expires_at
-                    }).to_string());
-                }
-
+        if let Some(exp) = expires_at {
+            if exp <= now {
                 return Ok(serde_json::json!({
-                    "valid": true,
-                    "plan": tier.name,
-                    "is_lifetime": tier.days.is_none(),
-                    "expires_at": expires_at
+                    "valid": false,
+                    "reason": format!("Your {} access has expired. Please purchase a new key.", tier.name)
                 }).to_string());
             }
         }
 
+        // ── Step 3: Machine lock via Supabase ─────────────────────────────
+        let supabase_url = "https://uukcwgtbuhccgbmhzqpf.supabase.co";
+        let supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1a2N3Z3RidWhjY2dibWh6cXBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NzM5OTQsImV4cCI6MjA5MTQ0OTk5NH0.VorsMPWlL6Agqw8nYWMMb3dILXZlIkYgtgFTHGCFwR4";
+
+        let table_url = format!("{}/rest/v1/license_activations?license_key=eq.{}", supabase_url, key);
+
+        let existing = client
+            .get(&table_url)
+            .header("apikey", supabase_key)
+            .header("Authorization", format!("Bearer {}", supabase_key))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .text()
+            .await
+            .unwrap_or_default();
+
+        let rows: serde_json::Value = serde_json::from_str(&existing).unwrap_or(serde_json::json!([]));
+
+        if let Some(arr) = rows.as_array() {
+            if arr.is_empty() {
+                // First activation — lock to this machine
+                client
+                    .post(format!("{}/rest/v1/license_activations", supabase_url))
+                    .header("apikey", supabase_key)
+                    .header("Authorization", format!("Bearer {}", supabase_key))
+                    .header("Content-Type", "application/json")
+                    .body(serde_json::json!({
+                        "license_key": key,
+                        "machine_id": machine_id
+                    }).to_string())
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?;
+            } else {
+                // Already activated — verify machine matches
+                let stored_machine = arr[0]["machine_id"].as_str().unwrap_or("");
+                if stored_machine != machine_id {
+                    return Ok(serde_json::json!({
+                        "valid": false,
+                        "reason": "This key is already activated on another device. Contact support to transfer."
+                    }).to_string());
+                }
+            }
+        }
+
         Ok(serde_json::json!({
-            "valid": false,
-            "reason": format!("HTTP {} — {}", last_status, &last_body[..last_body.len().min(300)])
+            "valid": true,
+            "plan": tier.name,
+            "is_lifetime": tier.days.is_none(),
+            "expires_at": expires_at
         }).to_string())
     })
 }
